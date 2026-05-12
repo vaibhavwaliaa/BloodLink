@@ -1,0 +1,40 @@
+﻿# Laravel
+/vendor/
+/backend/vendor/
+/frontend/node_modules/
+/node_modules/
+
+# Environment
+.env
+.env.*
+.env.local
+.env.testing
+
+# Laravel
+/storage/
+/bootstrap/cache/
+/public/storage
+
+# Build
+/frontend/dist/
+/dist/
+/public/spa/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+
+# Composer
+composer.lock
+
+# Other
+/.env.php
