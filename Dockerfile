@@ -9,10 +9,12 @@ RUN apk add --no-cache \
     curl \
     zip \
     unzip \
-    libzip-dev
+    openssl-dev \
+    $PHPIZE_DEPS
 
 # Install PHP extensions
-RUN docker-php-ext-install zip
+RUN pecl install mongodb \
+    && docker-php-ext-enable mongodb
 
 WORKDIR /app
 
@@ -40,11 +42,13 @@ RUN apk add --no-cache \
     nginx \
     supervisor \
     curl \
-    libzip \
-    oniguruma
+    oniguruma \
+    openssl \
+    $PHPIZE_DEPS
 
 # Install PHP extensions
-RUN docker-php-ext-install zip
+RUN pecl install mongodb \
+    && docker-php-ext-enable mongodb
 
 # Copy PHP config
 RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
