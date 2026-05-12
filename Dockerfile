@@ -1,22 +1,126 @@
-FROM node:18-alpine AS frontend-build
-WORKDIR /app/frontend
-COPY frontend/package*.json ./
-RUN npm ci
-COPY frontend/ ./
-RUN npm run build
+# Multi-stage build: PHP + Node for Laravel + frontend build
+FROM php:8.2-fpm-alpine AS builder
 
-FROM composer:2 AS dependencies
+# Install system dependencies for PHP and build tools
+RUN apk add --no-cache \
+    nodejs npm \
+    composer \
+    git \
+    curl \
+    zip \
+    unzip \
+    libzip-dev
+
+# Install PHP extensions
+RUN docker-php-ext-install zip
+
+WORKDIR /app
+
+# Copy entire repo
+COPY . .
+
+# Install backend PHP dependencies
 WORKDIR /app/backend
-COPY backend/composer.json backend/composer.lock ./
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-progress --prefer-dist
+RUN composer install --no-dev --optimize-autoloader
 
-FROM php:8.2-fpm
-RUN apt-get update && apt-get install -y git zip unzip libssl-dev pkg-config && rm -rf /var/lib/apt/lists/*
-RUN pecl install mongodb && docker-php-ext-enable mongodb
-WORKDIR /var/www/html
-COPY --from=dependencies /app/backend/vendor ./vendor
-COPY backend/ ./
-COPY --from=frontend-build /app/frontend/dist ./public/spa
-RUN chown -R www-data:www-data /var/www/html
-EXPOSE 8080
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8080"]
+# Build frontend
+WORKDIR /app/frontend
+RUN npm ci && npm run build
+
+# Copy frontend dist to backend public
+RUN rm -rf /app/backend/public/spa || true && \
+    mkdir -p /app/backend/public/spa && \
+    cp -r /app/frontend/dist/* /app/backend/public/spa/
+
+# Final stage: PHP FPM runtime
+FROM php:8.2-fpm-alpine
+
+# Install runtime dependencies
+RUN apk add --no-cache \
+    nginx \
+    supervisor \
+    curl \
+    libzip \
+    oniguruma
+
+# Install PHP extensions
+RUN docker-php-ext-install zip
+
+# Copy PHP config
+RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
+
+WORKDIR /app
+
+# Copy built application from builder stage
+COPY --from=builder /app/backend /app
+
+# Create necessary directories
+RUN mkdir -p /app/storage/logs /app/storage/framework/cache /app/storage/framework/sessions && \
+    chown -R www-data:www-data /app/storage /app/bootstrap/cache
+
+# Copy nginx config
+RUN mkdir -p /etc/nginx/conf.d
+
+RUN cat > /etc/nginx/conf.d/default.conf << 'EOF'
+server {
+    listen 80;
+    server_name _;
+    
+    root /app/public;
+    index index.php;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        fastcgi_pass 127.0.0.1:9000;
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
+}
+EOF
+
+# Copy supervisor config
+RUN mkdir -p /etc/supervisor/conf.d
+
+RUN cat > /etc/supervisor/conf.d/laravel.conf << 'EOF'
+[supervisord]
+nodaemon=true
+
+[program:php-fpm]
+command = /usr/local/sbin/php-fpm
+autostart = true
+autorestart = true
+priority = 999
+stdout_logfile = /dev/stdout
+stdout_logfile_maxbytes = 0
+stderr_logfile = /dev/stderr
+stderr_logfile_maxbytes = 0
+
+[program:nginx]
+command = /usr/sbin/nginx -g "daemon off;"
+autostart = true
+autorestart = true
+priority = 998
+stdout_logfile = /dev/stdout
+stdout_logfile_maxbytes = 0
+stderr_logfile = /dev/stderr
+stderr_logfile_maxbytes = 0
+EOF
+
+# Clear cache and logs
+RUN php artisan config:cache
+RUN php artisan route:cache
+
+# Set permissions
+RUN chown -R www-data:www-data /app
+
+EXPOSE 80
+
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/laravel.conf"]

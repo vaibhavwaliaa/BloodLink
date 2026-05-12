@@ -1,7 +1,50 @@
 services:
   - type: web
-    name: bloodlink
-    env: docker
-    dockerfilePath: Dockerfile
-    branch: main
+    name: bloodlink-app
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    region: oregon
     plan: free
+    healthCheckPath: /
+    envVars:
+      - key: APP_NAME
+        value: BloodLink
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_URL
+        value: https://bloodlink-app.onrender.com
+      - key: CLIENT_URL
+        value: https://bloodlink-app.onrender.com
+      - key: APP_KEY
+        sync: false
+      - key: DB_CONNECTION
+        value: mongodb
+      - key: DB_URI
+        sync: false
+      - key: DB_DATABASE
+        value: blood_donation
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_PHONE_NUMBER
+        value: "+16506006831"
+      - key: TWILIO_MESSAGING_SERVICE_SID
+        sync: false
+      - key: LOG_CHANNEL
+        value: stack
+      - key: LOG_LEVEL
+        value: info
+      - key: SESSION_DRIVER
+        value: file
+      - key: CACHE_STORE
+        value: file
+autoDeploy: true
