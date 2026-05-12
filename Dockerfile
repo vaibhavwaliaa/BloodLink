@@ -74,10 +74,6 @@ COPY nginx.conf /etc/nginx/http.d/default.conf
 # Copy supervisor config
 COPY supervisord.conf /etc/supervisord.conf
 
-# Clear cache and logs
-RUN php artisan config:cache
-RUN php artisan route:cache
-
 # Set permissions
 RUN chown -R www-data:www-data /app
 

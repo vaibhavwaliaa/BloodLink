@@ -5,6 +5,9 @@ npm-debug.log
 README.md
 .env.local
 .env.*.local
+.env
+backend/.env
+backend/.env.*
 .DS_Store
 Thumbs.db
 backend/storage/logs/*
