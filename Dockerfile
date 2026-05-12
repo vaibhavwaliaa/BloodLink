@@ -4,17 +4,21 @@ FROM php:8.2-fpm-alpine AS builder
 # Install system dependencies for PHP and build tools
 RUN apk add --no-cache \
     nodejs npm \
-    composer \
     git \
     curl \
+    ca-certificates \
     zip \
     unzip \
     openssl-dev \
     $PHPIZE_DEPS
 
+# Install Composer using the same PHP binary as the image
+RUN curl -fsSL https://getcomposer.org/installer -o /tmp/composer-setup.php \
+    && php /tmp/composer-setup.php --install-dir=/usr/local/bin --filename=composer \
+    && rm /tmp/composer-setup.php
+
 # Install PHP extensions
-RUN docker-php-ext-install session tokenizer \
-    && pecl install mongodb \
+RUN pecl install mongodb \
     && docker-php-ext-enable mongodb
 
 WORKDIR /app
@@ -43,13 +47,13 @@ RUN apk add --no-cache \
     nginx \
     supervisor \
     curl \
+    ca-certificates \
     oniguruma \
     openssl \
     $PHPIZE_DEPS
 
 # Install PHP extensions
-RUN docker-php-ext-install session tokenizer \
-    && pecl install mongodb \
+RUN pecl install mongodb \
     && docker-php-ext-enable mongodb
 
 # Copy PHP config
