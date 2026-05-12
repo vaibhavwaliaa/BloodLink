@@ -13,7 +13,8 @@ RUN apk add --no-cache \
     $PHPIZE_DEPS
 
 # Install PHP extensions
-RUN pecl install mongodb \
+RUN docker-php-ext-install session tokenizer \
+    && pecl install mongodb \
     && docker-php-ext-enable mongodb
 
 WORKDIR /app
@@ -47,7 +48,8 @@ RUN apk add --no-cache \
     $PHPIZE_DEPS
 
 # Install PHP extensions
-RUN pecl install mongodb \
+RUN docker-php-ext-install session tokenizer \
+    && pecl install mongodb \
     && docker-php-ext-enable mongodb
 
 # Copy PHP config
