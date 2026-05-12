@@ -68,61 +68,11 @@ COPY --from=builder /app/backend /app
 RUN mkdir -p /app/storage/logs /app/storage/framework/cache /app/storage/framework/sessions && \
     chown -R www-data:www-data /app/storage /app/bootstrap/cache
 
-# Copy nginx config
-RUN mkdir -p /etc/nginx/conf.d
-
-RUN cat > /etc/nginx/conf.d/default.conf << 'EOF'
-server {
-    listen 80;
-    server_name _;
-    
-    root /app/public;
-    index index.php;
-
-    location / {
-        try_files $uri $uri/ /index.php?$query_string;
-    }
-
-    location ~ \.php$ {
-        fastcgi_pass 127.0.0.1:9000;
-        fastcgi_index index.php;
-        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
-        include fastcgi_params;
-    }
-
-    location ~ /\.ht {
-        deny all;
-    }
-}
-EOF
+# Copy nginx config to Alpine nginx http.d include path
+COPY nginx.conf /etc/nginx/http.d/default.conf
 
 # Copy supervisor config
-RUN mkdir -p /etc/supervisor/conf.d
-
-RUN cat > /etc/supervisor/conf.d/laravel.conf << 'EOF'
-[supervisord]
-nodaemon=true
-
-[program:php-fpm]
-command = /usr/local/sbin/php-fpm
-autostart = true
-autorestart = true
-priority = 999
-stdout_logfile = /dev/stdout
-stdout_logfile_maxbytes = 0
-stderr_logfile = /dev/stderr
-stderr_logfile_maxbytes = 0
-
-[program:nginx]
-command = /usr/sbin/nginx -g "daemon off;"
-autostart = true
-autorestart = true
-priority = 998
-stdout_logfile = /dev/stdout
-stdout_logfile_maxbytes = 0
-stderr_logfile = /dev/stderr
-stderr_logfile_maxbytes = 0
-EOF
+COPY supervisord.conf /etc/supervisord.conf
 
 # Clear cache and logs
 RUN php artisan config:cache
@@ -133,4 +83,4 @@ RUN chown -R www-data:www-data /app
 
 EXPOSE 80
 
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/laravel.conf"]
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
