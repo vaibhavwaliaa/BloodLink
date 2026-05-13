@@ -79,4 +79,5 @@ RUN chown -R www-data:www-data /app
 
 EXPOSE 80
 
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
+# Clear cached Laravel bootstrap/config/routes/views before starting services.
+CMD ["/bin/sh", "-lc", "php /app/artisan optimize:clear || true; exec /usr/bin/supervisord -c /etc/supervisord.conf"]
